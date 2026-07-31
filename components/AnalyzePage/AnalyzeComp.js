@@ -1,12 +1,8 @@
 import { useState } from "react";
 import Uploader from "./Uploader";
 import AnalysisPage from "./AnalysisPage";
-import { useSearchParams } from "next/navigation";
 
-export default function AnalyzeComp(){
-
-    const urlParams = useSearchParams();
-    const [taskId,setTaskId] = useState(urlParams.get('taskId'));
+export default function AnalyzeComp({taskId, setTaskId}){
    
     const [loading,setLoading] = useState();
 

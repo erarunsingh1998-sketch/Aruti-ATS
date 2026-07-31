@@ -101,7 +101,7 @@ const plans = [
       "30 resume enhancements with download per month",
       "10 ATS-compliant resume downloads per month",
       "Most efficient models for resume building",
-      "GPT-5.6 Luna and Gemini 3.6 Flash access",
+      "Gemini 3.6 Flash access",
     ],
     button: "Choose Ultimate",
   },

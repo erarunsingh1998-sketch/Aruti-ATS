@@ -1,64 +1,106 @@
 "use server";
 import mammoth from 'mammoth';
-import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
-import { extractScannedPdfText } from './OCREngine';
 
-if (typeof window === "undefined") {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `pdfjs-dist/legacy/build/pdf.worker.mjs`;
+function ensureDomMatrixPolyfill() {
+    if (typeof globalThis.DOMMatrix !== 'undefined') {
+        return;
+    }
+
+    class DOMMatrix {
+        constructor(...args) {
+            this.args = args;
+        }
+
+        translate() {
+            return this;
+        }
+
+        scale() {
+            return this;
+        }
+
+        multiply() {
+            return this;
+        }
+
+        inverse() {
+            return this;
+        }
+
+        toString() {
+            return '';
+        }
+    }
+
+    globalThis.DOMMatrix = DOMMatrix;
 }
 
 export async function parseFileText(file) {
-    if (file.name.endsWith('.pdf')) {
+    const fileName = (file?.name || '').toLowerCase();
+    if (fileName.endsWith('.pdf')) {
         return parsePdfText(file);
     }
     return parseDocText(file);
 }
 
 async function parsePdfText(pdfFile) {
-    const arrayBuffer = await pdfFile.arrayBuffer();
-    const data = new Uint8Array(arrayBuffer);
-    const pdf = await pdfjsLib.getDocument({ data }).promise;
+    try {
+        ensureDomMatrixPolyfill();
+        const { getDocument } = await import('pdfjs-dist/legacy/build/pdf.mjs');
 
-    let rawText = "";
+        const arrayBuffer = await pdfFile.arrayBuffer();
+        const data = new Uint8Array(arrayBuffer);
+        const pdf = await getDocument({ data }).promise;
 
-    for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const content = await page.getTextContent();
+        let rawText = "";
 
-        // Preserve line breaks using items layout position (hasEOL flag or space padding)
-        let pageLines = [];
-        let currentLine = "";
+        for (let i = 1; i <= pdf.numPages; i += 1) {
+            const page = await pdf.getPage(i);
+            const content = await page.getTextContent();
 
-        for (const item of content.items) {
-            currentLine += item.str + " ";
-            // item.hasEOL signals end of line in PDF streams
-            if (item.hasEOL) {
+            const pageLines = [];
+            let currentLine = "";
+
+            for (const item of content.items || []) {
+                const text = typeof item?.str === 'string' ? item.str : '';
+                currentLine += `${text} `;
+
+                if (item?.hasEOL) {
+                    pageLines.push(currentLine.trim());
+                    currentLine = "";
+                }
+            }
+
+            if (currentLine.trim().length > 0) {
                 pageLines.push(currentLine.trim());
-                currentLine = "";
+            }
+
+            rawText += `${pageLines.join('\n')}\n`;
+        }
+
+        rawText = await cleanExtractedText(rawText);
+
+        if (rawText.length < 50) {
+            console.info('Native PDF extraction yielded minimal text. Running OCR fallback...');
+            try {
+                const { extractScannedPdfText } = await import('./OCREngine.js');
+                const ocrText = await extractScannedPdfText(pdfFile, pdfFile.name);
+                rawText = await cleanExtractedText(ocrText);
+            } catch (ocrError) {
+                console.error('OCR fallback failed:', ocrError);
             }
         }
-        
-        if (currentLine.trim().length > 0) {
-            pageLines.push(currentLine.trim());
-        }
 
-        // Join items into well-defined line breaks
-        rawText += pageLines.join('\n') + '\n';
+        const qualityMetrics = await calculateReadabilityAndQuality(rawText);
+
+        return { text: rawText, quality: qualityMetrics };
+    } catch (error) {
+        console.error('PDF parsing failed:', error);
+        return {
+            text: "",
+            quality: { parseScore: 0, readabilityScore: 0, combinedScore: 0 }
+        };
     }
-
-    // Sanitize the PDF output
-    rawText = await cleanExtractedText(rawText);
-
-    // Run OCR fallback if extracted text is empty or too short
-    if (rawText.length < 50) {
-        console.info('Native PDF extraction yielded minimal text. Running OCR fallback...');
-        const ocrText = await extractScannedPdfText(pdfFile, pdfFile.name);
-        rawText = await cleanExtractedText(ocrText);
-    }
-
-    const qualityMetrics = await calculateReadabilityAndQuality(rawText);
-
-    return { text: rawText, quality: qualityMetrics };
 }
 
 async function parseDocText(docFile) {
@@ -91,6 +133,7 @@ async function parseDocText(docFile) {
  * Strips \r, \t, zero-width characters, and normalizes spacing & newlines.
  */
 export async function cleanExtractedText(text) {
+    if (typeof text !== 'string') return "";
     if (!text) return "";
 
     return text

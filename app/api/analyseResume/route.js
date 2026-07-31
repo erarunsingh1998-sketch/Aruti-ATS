@@ -10,11 +10,12 @@ export async function POST(request) {
         const file = formData.get('resume') || formData.get('file');
         const resumeText = formData.get('resumeText') || '';
 
-        const validFile = file && typeof file.name === 'string' && (
-            file.name.endsWith('.pdf') || 
-            file.name.endsWith('.docx') || 
-            file.name.endsWith('.doc')
-        );
+        const fileName = typeof file?.name === 'string' ? file.name.toLowerCase() : '';
+        const validFile = Boolean(file && fileName && (
+            fileName.endsWith('.pdf') ||
+            fileName.endsWith('.docx') ||
+            fileName.endsWith('.doc')
+        ));
 
         if (!validFile && resumeText.trim().length < 50) {
             return NextResponse.json({ error: "Provide a valid resume." }, { status: 400 });
@@ -49,7 +50,7 @@ export async function POST(request) {
         // Do not enqueue work when the server cannot call an AI provider.
         // This guard also protects against a stale hot-reloaded stream listener.
         if (!hasConfiguredAIProvider()) {
-            const error = "No AI provider API keys configured. Set GEMINI_API_KEYS or GPT_API_KEYS in .env and restart the server.";
+            const error = "No Gemini API keys configured. Set GEMINI_API_KEYS in .env and restart the server.";
             console.error(`[AI Engine] Analysis failed for ${taskId}: ${error}`);
             await redis.set(`task:error:${taskId}`, error, 'EX', 2700);
             await redis.set(`${REDIS_STATUS_KEY}:${taskId}`, "FAILED", 'EX', 2700);
