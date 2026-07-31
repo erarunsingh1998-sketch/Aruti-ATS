@@ -94,9 +94,13 @@ async function startStreamListener() {
 }
 
 // Ensure the listener starts only once (avoids duplication on hot reload)
-if (!globalForRedis.isStreamListenerRunning) {
-    globalForRedis.isStreamListenerRunning = true;
-    startStreamListener().catch((err) => {
-        console.error("[Redis Stream] Failed to start listener:", err);
-    });
+// Replace lines 95-101 with:
+const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build';
+const isVercelServerless = process.env.VERCEL === '1';
+
+if (!globalForRedis.isStreamListenerRunning && !isBuildPhase && !isVercelServerless) {
+  globalForRedis.isStreamListenerRunning = true;
+  startStreamListener().catch((err) => {
+    console.error("[Redis Stream] Failed to start listener:", err);
+  });
 }

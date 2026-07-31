@@ -47,8 +47,15 @@ const UploadForm = ({ updateTaskId }) => {
   const [error, setError] = useState("");
   const [dragActive, setDragActive] = useState(false);
   const [loading, setLoading] = useState(false);
+  const MAX_FILE_SIZE = 1024 * 1024; // 1 MB
 
   const handleFile = (selectedFile) => {
+    if (selectedFile.size > MAX_FILE_SIZE) {
+      setError("File size must be 1 MB or less.");
+      setFile(null);
+      return;
+    }
+
     setError("");
     setFile(selectedFile);
     setResumeText("");
