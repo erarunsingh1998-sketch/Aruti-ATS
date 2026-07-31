@@ -46,11 +46,27 @@ export async function parseFileText(file) {
 async function parsePdfText(pdfFile) {
     try {
         ensureDomMatrixPolyfill();
-        const { getDocument } = await import('pdfjs-dist/legacy/build/pdf.mjs');
+        const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+
+        // In Node.js PDF.js uses a fake worker and otherwise derives the
+        // worker path from its bundled module URL. Turbopack can rewrite that
+        // path to a missing .next/server chunk, so load the worker explicitly
+        // and let PDF.js reuse it instead of performing its relative import.
+        if (!globalThis.pdfjsWorker?.WorkerMessageHandler) {
+            globalThis.pdfjsWorker = await import('pdfjs-dist/legacy/build/pdf.worker.mjs');
+        }
+
+        const { getDocument } = pdfjs;
 
         const arrayBuffer = await pdfFile.arrayBuffer();
         const data = new Uint8Array(arrayBuffer);
-        const pdf = await getDocument({ data }).promise;
+        const pdf = await getDocument({
+            data,
+            useWorkerFetch: false,
+            isEvalSupported: false,
+            disableFontFace: true,
+            disableRange: true,
+        }).promise;
 
         let rawText = "";
 

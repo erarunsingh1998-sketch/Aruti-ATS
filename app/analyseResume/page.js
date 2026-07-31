@@ -7,14 +7,22 @@ import { useSearchParams } from "next/navigation";
 
 export const dynamic = 'force-dynamic';
 
-export default function AnalyzePage(){
-
+function AnalyzePageContent() {
   const param = useSearchParams();
-  const [taskId,setTaskId] = useState(param.get('taskId'));
+  const [taskId, setTaskId] = useState(param.get('taskId'));
 
-  return <div className="min-h-screen w-full flex flex-col">
-    <HomeHeader />      
-    <AnalyzeComp taskId={taskId} setTaskId={setTaskId}/>
+  return (
+    <div className="min-h-screen w-full flex flex-col">
+      <HomeHeader />
+      <AnalyzeComp taskId={taskId} setTaskId={setTaskId} />
+    </div>
+  );
+}
 
-  </div>
+export default function AnalyzePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen w-full flex items-center justify-center">Loading...</div>}>
+      <AnalyzePageContent />
+    </Suspense>
+  );
 }
