@@ -1,4 +1,8 @@
+import fs from "fs/promises";
+import path from "path";
 import Redis from "ioredis";
+import { calculateReadabilityAndQuality, cleanExtractedText, parseFileText } from "@/utility/serverUtil/ParserEngine";
+import { isValidResume } from "@/utility/serverUtil/ResumeEngine";
 import { procsessATSByAI } from "./AIEngine";
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
@@ -68,22 +72,75 @@ async function startStreamListener() {
                     data[fields[i]] = fields[i + 1];
                 }
 
-                const taskId = data.taskId;
-                const resumeData = data.resumeData;
+                const taskId = typeof data.taskId === 'string' ? data.taskId : '';
+                const taskFolder = typeof data.taskFolder === 'string' ? data.taskFolder : '';
+                const fileName = typeof data.fileName === 'string' ? data.fileName : '';
+                let resumeData = null;
                 let resumeQuality = null;
 
                 try {
-                    resumeQuality = data.resumeQuality ? JSON.parse(data.resumeQuality) : null;
-                } catch {
-                    resumeQuality = data.resumeQuality;
+                    if (!taskId || !taskFolder) {
+                        throw new Error('Missing task metadata in stream event.');
+                    }
+
+                    await redis.set(`${REDIS_STATUS_KEY}:${taskId}`, "PARSING", 'EX', 2700);
+
+                    if (fileName) {
+                        const filePath = path.join(taskFolder, fileName);
+                        const fileBuffer = await fs.readFile(filePath);
+                        const fileObject = {
+                            name: fileName,
+                            arrayBuffer: async () => fileBuffer.buffer.slice(fileBuffer.byteOffset, fileBuffer.byteOffset + fileBuffer.byteLength),
+                        };
+
+                        const parsed = await parseFileText(fileObject);
+                        resumeData = parsed?.text ?? '';
+                        resumeQuality = parsed?.quality ?? null;
+
+                        await fs.rm(taskFolder, { recursive: true, force: true });
+                    } else if (typeof data.resumeText === 'string' && data.resumeText.trim()) {
+                        resumeData = await cleanExtractedText(data.resumeText);
+                        resumeQuality = await calculateReadabilityAndQuality(resumeData);
+                    } else {
+                        const files = await fs.readdir(taskFolder);
+                        const candidate = files.find((name) => /\.(pdf|docx|doc|txt)$/i.test(name));
+                        if (candidate) {
+                            const filePath = path.join(taskFolder, candidate);
+                            if (/\.txt$/i.test(candidate)) {
+                                const rawText = await fs.readFile(filePath, 'utf-8');
+                                resumeData = await cleanExtractedText(rawText);
+                                resumeQuality = await calculateReadabilityAndQuality(resumeData);
+                            } else {
+                                const fileBuffer = await fs.readFile(filePath);
+                                const fileObject = {
+                                    name: candidate,
+                                    arrayBuffer: async () => fileBuffer.buffer.slice(fileBuffer.byteOffset, fileBuffer.byteOffset + fileBuffer.byteLength),
+                                };
+
+                                const parsed = await parseFileText(fileObject);
+                                resumeData = parsed?.text ?? '';
+                                resumeQuality = parsed?.quality ?? null;
+                            }
+                            await fs.rm(taskFolder, { recursive: true, force: true });
+                        }
+                    }
+
+                    if (!resumeData || !isValidResume(resumeData)) {
+                        throw new Error('Invalid or missing resume document.');
+                    }
+
+                    await redis.set(`${REDIS_STATUS_KEY}:${taskId}`, "ANALYSING", 'EX', 2700);
+                    await procsessATSByAI(taskId, resumeData, resumeQuality, redis);
+                } catch (error) {
+                    console.error(`[Redis Stream] Failed task ${taskId}:`, error);
+                    if (taskId) {
+                        await redis.set(`task:error:${taskId}`, error.message || 'AI analysis failed.', 'EX', 2700);
+                        await redis.set(`${REDIS_STATUS_KEY}:${taskId}`, "FAILED", 'EX', 2700);
+                    }
+                    await fs.rm(taskFolder, { recursive: true, force: true });
+                } finally {
+                    await subscriber.xack(STREAM_NAME, CONSUMER_GROUP, messageId);
                 }
-
-                // Update Status Cache to PROCESSING
-                await redis.set(`${REDIS_STATUS_KEY}:${taskId}`, "PROCESSING", 'EX', 2700);
-
-                await procsessATSByAI(taskId, resumeData, resumeQuality, redis);
-
-                await subscriber.xack(STREAM_NAME, CONSUMER_GROUP, messageId);
             }
         } catch (error) {
             console.error("[Redis Stream] Listener error:", error);

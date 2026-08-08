@@ -1,15 +1,4 @@
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata = {
   title: "Aruti ATS — ATS Checker & Resume Enhancer",
@@ -39,7 +28,7 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`} >
+    <html lang="en" className="h-full antialiased" >
       <body className="flex flex-col relative">
         <div className="absolute inset-0 -z-50 bg-slate-100 " />
         <div className="absolute inset-0 -z-30 bg-gradient-to-r from-rose-300/40 bg-sky-300/30" />

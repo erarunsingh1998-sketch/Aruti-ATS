@@ -5,6 +5,29 @@ import { AlertTriangle, RefreshCw, ArrowLeft, CheckCircle2, CircleX, Lightbulb, 
 import { BriefcaseBusiness, BadgeCheck,  Sparkles, } from "lucide-react";
 import { FileText, BarChart3, TriangleAlert, Search, SpellCheck, History, } from "lucide-react";
 
+const STATUS_LABELS = {
+  PENDING: {
+    label: "Queued for parsing",
+    description: "Your resume has been received and is waiting to enter the parsing queue.",
+  },
+  PARSING: {
+    label: "Parsing Resume",
+    description: "We are extracting your resume content before AI analysis.",
+  },
+  ANALYSING: {
+    label: "Analysing Resume with AI",
+    description: "Your resume is being evaluated by the AI-powered ATS engine.",
+  },
+  PROCESSING: {
+    label: "Processing Resume",
+    description: "Your resume is currently being processed.",
+  },
+  READY: {
+    label: "Analysis Ready",
+    description: "Your resume analysis is complete and ready to review.",
+  },
+};
+
 
 export default function AnalysisPage({ taskId }) {
   const [status, setStatus] = useState("PROCESSING");
@@ -67,56 +90,39 @@ export default function AnalysisPage({ taskId }) {
   }
 
   if (!analysis || status !== "READY") {
-    return <LoadingAnalysis />;
+    return <LoadingAnalysis status={status} taskId={taskId} />;
   }
 
   return (
     <main className="relative w-full min-h-screen overflow-hidden pb-16">
-
-      {/* Background Glow */}
       <div className="absolute inset-0 -z-20 overflow-hidden">
-        <motion.div className="absolute left-0 top-10 h-72 w-72 rounded-full bg-rose-400/40 blur-[120px]" animate={{ scale: [0.5, 1.2, 0.5], }} transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", }} />
-        <motion.div className="absolute right-0 bottom-0 h-80 w-80 rounded-full bg-sky-400/40 blur-[150px]" animate={{ scale: [1.2, 0.6, 1.2], }} transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", }} />
+        <motion.div className="absolute left-0 top-10 h-72 w-72 rounded-full bg-rose-400/40 blur-[120px]" animate={{ scale: [0.5, 1.2, 0.5] }} transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }} />
+        <motion.div className="absolute right-0 bottom-0 h-80 w-80 rounded-full bg-sky-400/40 blur-[150px]" animate={{ scale: [1.2, 0.6, 1.2] }} transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }} />
       </div>
 
-      <div className="mx-auto max-w-7xl px-4 pt-28 lg:px-8">
-        {/* Page Heading */}
-        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="mb-6" >
-          <div className="inline-flex items-center rounded-full border border-sky-300 bg-sky-100/60 px-4 py-1 text-sm font-medium text-sky-700 backdrop-blur">
-            AI Powered ATS Analysis
-          </div>
-
-          <h1 className="mt-1 text-4xl font-black tracking-tight text-slate-900">
-            <span className="bg-clip-text text-transparent bg-gradient-to-br from-rose-600 to-rose-900">Resume Analysis &nbsp;</span> 
-            Report
-          </h1>
-
-          <p className="mt-1 max-w-2xl text-slate-700">
-            We've analyzed your resume for ATS compatibility, keyword
-            optimization, formatting quality, grammar, and recruiter
-            expectations.
-          </p>
-        </motion.div>
-
-        {/* Layout */}
+      <div className="mx-auto max-w-7xl px-4 pt-12 lg:px-8">
         <div className="grid gap-8 lg:grid-cols-[340px_1fr]">
-
-          {/* Sticky Sidebar */}
-
-          <aside className="">
+          <aside className="space-y-5">
             <AnalysisSidebar analysis={analysis} />
+            <div className="rounded-3xl border border-white/40 bg-white/70 p-6 shadow-xl backdrop-blur-xl">
+              <h3 className="text-lg font-bold text-slate-900">Improve Your Resume</h3>
+              <p className="mt-3 text-sm text-slate-600">
+                Use Aruti AI to optimize your resume in a template with your latest data.
+              </p>
+              <button
+                onClick={() => window.location.assign(`/templates?jobId=${encodeURIComponent(taskId)}`)}
+                className="mt-5 w-full rounded-2xl bg-sky-700 px-4 py-3 text-sm font-semibold text-white transition hover:bg-sky-600"
+              >
+                Improve Resume with Aruti AI
+              </button>
+            </div>
           </aside>
-
-          {/* Scrollable Report */}
 
           <section>
             <AnalysisReport analysis={analysis} />
           </section>
-
         </div>
-
       </div>
-
     </main>
   );
 }
@@ -191,10 +197,11 @@ const Skeleton = ({ className = "" }) => (
   </div>
 );
 
-const LoadingAnalysis = () => {
+const LoadingAnalysis = ({ status, taskId }) => {
+  const statusMeta = STATUS_LABELS[status] || STATUS_LABELS.PROCESSING;
+
   return (
     <main className="relative min-h-screen overflow-hidden pb-16">
-      {/* Background Glow */}
       <div className="absolute inset-0 -z-20 overflow-hidden">
         <motion.div
           className="absolute left-0 top-10 h-72 w-72 rounded-full bg-rose-400/40 blur-[120px]"
@@ -209,30 +216,18 @@ const LoadingAnalysis = () => {
         />
       </div>
 
-      <div className="mx-auto max-w-7xl px-4 pt-28 lg:px-8">
-        {/* Heading */}
-        <div className="mb-10">
-          <Skeleton className="h-8 w-48 rounded-full" />
-          <Skeleton className="mt-5 h-10 w-96" />
-          <Skeleton className="mt-4 h-4 w-full max-w-2xl" />
-          <Skeleton className="mt-2 h-4 w-3/4 max-w-xl" />
-        </div>
-
+      <div className="mx-auto max-w-7xl px-4 pt-12 lg:px-8">
         <div className="grid gap-8 lg:grid-cols-[340px_1fr]">
-          {/* Sidebar */}
           <aside className="space-y-5">
-            {/* ATS Score */}
             <div className="rounded-3xl border border-white/40 bg-white/70 p-6 shadow-xl backdrop-blur-xl">
               <div className="flex justify-center">
                 <Skeleton className="h-40 w-40 rounded-full" />
               </div>
-
               <Skeleton className="mx-auto mt-6 h-6 w-32" />
               <Skeleton className="mx-auto mt-3 h-4 w-40" />
               <Skeleton className="mx-auto mt-2 h-4 w-28" />
             </div>
 
-            {/* Quick Stats */}
             <div className="rounded-3xl border border-white/40 bg-white/70 p-6 shadow-xl backdrop-blur-xl space-y-4">
               <Skeleton className="h-5 w-40" />
               <Skeleton className="h-4 w-full" />
@@ -244,25 +239,50 @@ const LoadingAnalysis = () => {
             <Skeleton className="h-12 w-full rounded-xl" />
           </aside>
 
-          {/* Right Report */}
           <section className="space-y-6">
-            {[1, 2, 3, 4, 5, 6].map((item) => (
-              <div
-                key={item}
-                className="rounded-3xl border border-white/40 bg-white/70 p-8 shadow-lg backdrop-blur-xl"
-              >
-                <Skeleton className="h-7 w-60" />
-                <Skeleton className="mt-5 h-4 w-full" />
-                <Skeleton className="mt-3 h-4 w-11/12" />
-                <Skeleton className="mt-3 h-4 w-10/12" />
+            <div className="rounded-3xl border border-white/40 bg-white/80 p-8 shadow-xl backdrop-blur-xl">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold text-slate-500">Resume analysis status</p>
+                  <h2 className="mt-3 text-2xl font-bold text-slate-900">{statusMeta.label}</h2>
+                </div>
 
-                <div className="mt-8 space-y-4">
-                  <Skeleton className="h-5 w-full" />
-                  <Skeleton className="h-5 w-11/12" />
-                  <Skeleton className="h-5 w-10/12" />
+                <div className="rounded-full bg-sky-100 px-4 py-2 text-sm font-semibold text-sky-700">
+                  {taskId ? `Task ${taskId}` : "Preparing task"}
                 </div>
               </div>
-            ))}
+
+              <p className="mt-5 text-slate-600">{statusMeta.description}</p>
+
+              <div className="mt-8 rounded-3xl bg-slate-50 p-5 text-sm text-slate-600">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex h-2.5 w-2.5 rounded-full bg-sky-500 animate-pulse" />
+                  {status === "PARSING"
+                    ? "Extracting text and parsing your resume content..."
+                    : status === "ANALYSING"
+                    ? "Sending parsed content to the AI engine for deep evaluation..."
+                    : status === "PENDING"
+                    ? "Your task is queued and will begin shortly."
+                    : "Processing your resume submission..."}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-2">
+              <div className="rounded-3xl border border-white/40 bg-white/70 p-6 shadow-xl backdrop-blur-xl">
+                <Skeleton className="h-5 w-40" />
+                <Skeleton className="mt-5 h-4 w-full" />
+                <Skeleton className="mt-3 h-4 w-10/12" />
+                <Skeleton className="mt-3 h-4 w-8/12" />
+              </div>
+
+              <div className="rounded-3xl border border-white/40 bg-white/70 p-6 shadow-xl backdrop-blur-xl">
+                <Skeleton className="h-5 w-40" />
+                <Skeleton className="mt-5 h-4 w-full" />
+                <Skeleton className="mt-3 h-4 w-11/12" />
+                <Skeleton className="mt-3 h-4 w-9/12" />
+              </div>
+            </div>
           </section>
         </div>
       </div>

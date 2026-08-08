@@ -1,12 +1,14 @@
+import { useRouter } from "next/navigation";
 import { Rocket } from "lucide-react";
 import { ResumeScanner } from "../HomePage/Hero";
 import { motion } from "framer-motion";
 import { useState } from "react";
 
-export default function Uploader({updateTaskId}){
+export default function Uploader({ updateTaskId }){
+  const router = useRouter();
 
   return (
-    <div className="w-full flex-1 pt-20 flex flex-col px-2 md:px-4 lg:px-8">
+    <div className="w-full flex-1 pt-10 flex flex-col px-2 md:px-4 lg:px-8">
       <main className="w-full flex-1 flex gap-5 flex-col-reverse md:flex-row items-center justify-between">
         
         {/* LEFT Section */}
@@ -128,6 +130,7 @@ const UploadForm = ({ updateTaskId }) => {
       const data = await response.json();
       if (data?.taskId) {
         updateTaskId(data.taskId);
+        router.replace(`/analyseResume?taskId=${encodeURIComponent(data.taskId)}`);
       } else {
         setError("Unable to process resume, please try again.");
       }

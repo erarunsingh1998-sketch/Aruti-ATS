@@ -1,1 +1,36 @@
 @import 'tailwindcss';
+
+:root { --ink: #172033; --muted: #64748b; --line: #e2e8f0; --paper: #fff; --blue: #2563eb; }
+* { box-sizing: border-box; }
+body { margin: 0; color: var(--ink); background: #f5f7fb; }
+button, input, textarea { font: inherit; }
+button { cursor: pointer; }
+
+/* In your globals.css */
+
+/* Custom scrollbar showing only the bar (no arrows) */
+.scrollbar-no-arrows::-webkit-scrollbar {
+  width: 8px; /* Adjust width of the bar */
+}
+
+.scrollbar-no-arrows::-webkit-scrollbar-track {
+  background: #e5e7eb; /* Light gray track */
+  border-radius: 9999px;
+}
+
+.scrollbar-no-arrows::-webkit-scrollbar-thumb {
+  background: #9ca3af; /* Darker gray scroll handle */
+  border-radius: 9999px;
+}
+
+.scrollbar-no-arrows::-webkit-scrollbar-thumb:hover {
+  background: #6b7280; /* Hover effect */
+}
+
+/* Hide top and bottom arrow buttons */
+.scrollbar-no-arrows::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0;
+  height: 0;
+}
+
