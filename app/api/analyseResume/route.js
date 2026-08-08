@@ -1,11 +1,24 @@
 import fs from 'fs/promises';
+import os from 'os';
 import path from 'path';
 import { redis, REDIS_STATUS_KEY } from "@/utility/serverUtil/RedisConfig";
 import { isValidResume } from "@/utility/serverUtil/ResumeEngine";
 import { hasConfiguredAIProvider } from "@/utility/serverUtil/AIEngine";
 import { NextResponse } from "next/server";
 
-const TASK_STORAGE_ROOT = path.join(process.cwd(), 'resume-tasks');
+const DEFAULT_TASK_STORAGE_ROOT = process.env.TASK_STORAGE_ROOT || path.join(process.cwd(), 'resume-tasks');
+
+async function getTaskStorageRoot() {
+    try {
+        await fs.mkdir(DEFAULT_TASK_STORAGE_ROOT, { recursive: true });
+        return DEFAULT_TASK_STORAGE_ROOT;
+    } catch (error) {
+        const fallbackRoot = path.join(os.tmpdir(), 'resume-tasks');
+        await fs.mkdir(fallbackRoot, { recursive: true });
+        console.warn(`Using fallback task storage root: ${fallbackRoot}`);
+        return fallbackRoot;
+    }
+}
 
 export async function POST(request) {
     try {
@@ -29,7 +42,8 @@ export async function POST(request) {
             Math.random().toString(36).substring(2, 8)
         ).toUpperCase();
 
-        const taskFolder = path.join(TASK_STORAGE_ROOT, taskId);
+        const taskRoot = await getTaskStorageRoot();
+        const taskFolder = path.join(taskRoot, taskId);
         await fs.mkdir(taskFolder, { recursive: true });
 
         let fileNameStored = null;
